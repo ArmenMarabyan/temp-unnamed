@@ -1,0 +1,48 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Hello BlogController!{% endblock %}
+
+{% block banner_title %}Blog listing{% endblock %}
+{% block banner_desc %}Blog desc{% endblock %}
+
+{% block body %}
+    <main role="main" class="container">
+
+        <div class="row">
+            <div class="col-md-8 blog-main">
+                <h3 class="pb-3 mb-4 font-italic border-bottom">
+                    Blog listing
+                </h3>
+
+                {% if items|length > 0 %}
+                    {% for item in items %}
+                        <div class="blog-post">
+                            <h2 class="blog-post-title">
+                                <a href="{{ path('app_blog_show', { id: item.id }) }}">{{ item.title }}</a>
+                            </h2>
+                            <p class="blog-post-meta">{{ item.createdAt|format_datetime('medium', 'short')}} by <a href="#">{{ item.author }}</a></p>
+
+                            <p>
+                                {{ item.summary | raw }}
+                            </p>
+                            <hr>
+                            <a href="{{ asset('images/' ~ item.image) }}" target="_blank" class="blog__post-list-image">
+                                <img src="{{ asset('images/' ~ item.image) }}" />
+                            </a>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <nav class="blog-pagination">
+                    <a class="btn btn-outline-primary" href="#">Older</a>
+                    <a class="btn btn-outline-secondary disabled" href="#">Newer</a>
+                </nav>
+
+            </div><!-- /.blog-main -->
+
+            {% include 'components/sidebar.html.twig' %}
+
+        </div><!-- /.row -->
+    </main><!-- /.container -->
+
+{% endblock %}
