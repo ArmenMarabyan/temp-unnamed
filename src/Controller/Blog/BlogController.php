@@ -3,16 +3,28 @@
 namespace App\Controller\Blog;
 
 use App\Entity\Blog;
+use App\Entity\Comment;
+use App\Form\CommentFormType;
+use App\Message\CommentMessage;
 use App\Repository\BlogRepository;
 use App\Repository\CommentRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
 class BlogController extends AbstractController
 {
-    public function __construct(private BlogRepository $blogRepository, private CommentRepository $commentRepository)
-    {
+    public function __construct(
+        private BlogRepository $blogRepository,
+        private CommentRepository $commentRepository,
+        private EntityManagerInterface $entityManager,
+        private MessageBusInterface $bus
+    ) {
     }
 
     #[Route('/blog', name: 'app_blog')]
@@ -25,19 +37,51 @@ class BlogController extends AbstractController
         ]);
     }
 
-    #[Route('/blog/{id}', name: 'app_blog_show')]
-    public function show(Blog $blog): Response
+    #[Route('/blog/{slug}', name: 'app_blog_show')]
+    public function show(
+        Blog    $blog,
+        Request $request,
+        #[Autowire('%photo_dir%')] string $photoDir
+    ): Response
     {
-//        $blogItem = $this->blogRepository->findBy(['id' => $id]);
 
-//        dump($blog->getComments());die;
+        $comment = new Comment();
+        $form = $this->createForm(CommentFormType::class, $comment);
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            $comment->setBlog($blog);
+
+            if ($photo = $form['photo']->getData()) {
+                $filename = bin2hex(random_bytes(6)) . '.' . $photo->guessExtension();
+                try {
+                    $photo->move($photoDir, $filename);
+                } catch (FileException $e) {
+                    // unable to upload the photo, give up
+                }
+                $comment->setPhotoFilename($filename);
+            }
+
+            $context = [
+                'user_ip' => $request->getClientIp(),
+                'user_agent' => $request->headers->get('user-agent'),
+                'referrer' => $request->headers->get('referer'),
+                'permalink' => $request->getUri(),
+            ];
+
+            $this->entityManager->persist($comment);
+            $this->entityManager->flush();
+
+            $this->bus->dispatch(new CommentMessage($comment->getId(), $context));
+
+            return $this->redirectToRoute('app_blog_show', ['slug' => $blog->getSlug()]);
+        }
 
         $comments = $this->commentRepository->getCommentPaginator($blog, 10);
-//        dump($comments);die;
 
         return $this->render('blog/show.html.twig', [
             'item' => $blog,
-            'comments' => $comments
+            'comments' => $comments,
+            'comment_form' => $form
         ]);
     }
 }

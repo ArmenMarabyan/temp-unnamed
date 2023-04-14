@@ -21,6 +21,7 @@ class BlogCrudController extends AbstractCrudController
     public function configureFields(string $pageName): iterable
     {
         yield TextField::new('title');
+        yield TextField::new('slug');
         yield TextEditorField::new('summary');
         yield TextEditorField::new('body');
         yield TextField::new('author');

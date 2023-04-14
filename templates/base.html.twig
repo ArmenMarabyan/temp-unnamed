@@ -37,8 +37,11 @@
 
     <div class="nav-scroller py-1 mb-2">
         <nav class="nav d-flex justify-content-center">
-            <a class="p-2 text-muted" href="/">Home</a>
-            <a class="p-2 text-muted" href="/blog">Blog</a>
+            {% if menu_items|length > 0 %}
+                {% for item,url in menu_items %}
+                    <a class="p-2 text-muted" href="{{ url }}">{{ item|title|capitalize }}</a>
+                {% endfor %}
+            {% endif %}
         </nav>
     </div>
 
